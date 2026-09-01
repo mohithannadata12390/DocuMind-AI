@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useChat } from '../hooks/useChat';
+import { Message, SourceCitation } from '../types';
 
 export const ChatWindow: React.FC = () => {
-  const { messages, isLoading, sendMessage } = useChat();
-  const [input, setInput] = useState('');
+  const {
+    activeSession,
+    inputValue,
+    setInputValue,
+    isStreaming,
+    handleSendMessage,
+    currentStreamText,
+    retrievedSources
+  } = useChat(null, []);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    sendMessage(input);
-    setInput('');
+    if (!inputValue.trim() || isStreaming) return;
+    handleSendMessage(e);
   };
+
+  const messages = activeSession.messages;
 
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto p-4 bg-slate-900 text-slate-100">
@@ -24,42 +33,50 @@ export const ChatWindow: React.FC = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto py-4 space-y-4">
-        {messages.map((m) => (
+        {messages.map((m: Message) => (
           <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`p-4 rounded-xl max-w-2xl ${m.role === 'user' ? 'bg-blue-600' : 'bg-slate-800 border border-slate-700'}`}>
-              <p className="text-sm whitespace-pre-wrap">{m.content}</p>
-              
-              {m.citations && m.citations.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-slate-700">
-                  <span className="text-xs font-semibold text-slate-400">Sources:</span>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {m.citations.map((c, idx) => (
-                      <span key={idx} className="text-xs bg-slate-900 text-blue-300 px-2 py-1 rounded border border-slate-700">
-                        📄 {c.document_name} (p. {c.page_number}) • {Math.round(c.score * 100)}%
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <p className="text-sm whitespace-pre-wrap">{m.text}</p>
             </div>
           </div>
         ))}
+
+        {isStreaming && currentStreamText && (
+          <div className="flex flex-col items-start">
+            <div className="p-4 rounded-xl max-w-2xl bg-slate-800 border border-slate-700">
+              <p className="text-sm whitespace-pre-wrap">{currentStreamText}</p>
+            </div>
+          </div>
+        )}
+
+        {retrievedSources && retrievedSources.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-slate-700">
+            <span className="text-xs font-semibold text-slate-400">Sources:</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {retrievedSources.map((c: SourceCitation, idx: number) => (
+                <span key={idx} className="text-xs bg-slate-900 text-blue-300 px-2 py-1 rounded border border-slate-700">
+                  📄 {c.filename} {c.page_number ? `(p. ${c.page_number})` : ''} • {Math.round(c.relevance_score * 100)}%
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSend} className="pt-4 border-t border-slate-800 flex gap-2">
         <input
           type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask anything about your uploaded documents..."
           className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
         />
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isStreaming}
           className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
         >
-          {isLoading ? 'Thinking...' : 'Send'}
+          {isStreaming ? 'Thinking...' : 'Send'}
         </button>
       </form>
     </div>
